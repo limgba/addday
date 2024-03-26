@@ -99,13 +99,17 @@ unsigned CALLBACK Thread1(void* argv)
 	{
 		return 1;
 	}
-	time_t now_second = time(nullptr);
-	time_t* old_second_ptr = (time_t*)argv;
-	if (now_second == *old_second_ptr)
+	while (true)
 	{
-		return 2;
+		time_t now_second = time(nullptr);
+		time_t* old_second_ptr = (time_t*)argv;
+		if (now_second == *old_second_ptr)
+		{
+			continue;
+		}
+		++*old_second_ptr;
+		Sleep(1000);
 	}
-	++*old_second_ptr;
 	return 0;
 }
 
@@ -206,14 +210,16 @@ time_t ReadXmlTime(const std::string& path, const std::string& key)
 
 int main()
 {
+	HANDLE thread1 = nullptr;
 	std::string add_time_str;
 	time_t now_second = 0;
 	now_second = ReadXmlTime(config["file"], config["key"]);
 	if (0 == now_second)
 	{
 		time(&now_second);
+		thread1 = (HANDLE)_beginthreadex(nullptr, 0, Thread1, &now_second, 0, nullptr);
 	}
-	HANDLE thread1 = (HANDLE)_beginthreadex(nullptr, 0, Thread1, &now_second, 0, nullptr);
+	::PrintfTime();
 	while (std::getline(std::cin, add_time_str))
 	{
 		std::vector<int> add_time_vec;
@@ -263,5 +269,8 @@ int main()
 		}
 		::PrintfTime();
 	}
-	CloseHandle(thread1);
+	if (nullptr != thread1)
+	{
+		CloseHandle(thread1);
+	}
 }
