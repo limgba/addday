@@ -3,15 +3,20 @@
 #include <process.h>
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 SYSTEMTIME GetSystemTimeByTM(const tm* t);
 void SetLocalTimeByTimeT(time_t timestamp);
-tm GetLocalTimeByDay(int day, int hour, int minute, int second);
+tm GetLocalTimeByDay(int day);
+tm GetLocalTimeByTime(int hour, int minute, int second);
 template<typename T>
 void Split(const std::string& in, std::vector<T>& out, const std::string& delimiters);
-void AddDay(int day, int hour, int minute, int second);
+void AddDay(int day);
+void SetTime(int hour, int minute, int second);
 static unsigned CALLBACK Thread1(void* argv);
 void PrintfTime();
+std::unordered_map<std::string, std::string> ReadConfig();
+time_t ReadXmlTime(const std::string& path, const std::string& key);
 
 
 template<typename T>

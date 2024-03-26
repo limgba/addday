@@ -1,6 +1,9 @@
-﻿#include <iostream>
+﻿#include "addday.h"
+#include <iostream>
 #include <process.h>
-#include "addday.h"
+#include <fstream>
+
+std::unordered_map<std::string, std::string> config = ReadConfig();
 
 SYSTEMTIME GetSystemTimeByTM(const tm* t)
 {
@@ -29,19 +32,63 @@ void SetLocalTimeByTimeT(time_t timestamp)
 	SetLocalTime(&st);
 }
 
-tm GetLocalTimeByDay(int day, int hour, int minute, int second)
+tm GetLocalTimeByDay(int day)
 {
 	time_t now_second;
 	time(&now_second);
-	now_second = now_second + day * 86400 + hour * 3600 + minute * 60 + second;
 	tm t;
+	now_second = now_second + day * 86400;
 	localtime_s(&t, &now_second);
 	return t;
 }
 
-void AddDay(int day, int hour, int minute, int second)
+tm GetLocalTimeByTime(int hour, int minute, int second)
 {
-	tm t = ::GetLocalTimeByDay(day, hour, minute, second);
+	time_t now_second;
+	time(&now_second);
+	tm t;
+	if (hour != 0 || minute != 0 || second != 0)
+	{
+		localtime_s(&t, &now_second);
+		now_second = now_second
+			+ (hour - t.tm_hour) * 3600
+			+ (minute - t.tm_min) * 60
+			+ (second - t.tm_sec)
+			;
+	}
+	localtime_s(&t, &now_second);
+	return t;
+}
+
+void AddDay(int day)
+{
+	int interval_ms = stoi(config["interval_ms"]);
+	if (interval_ms > 0)
+	{
+		for (int i = 0; i < day; ++i)
+		{
+			tm t = ::GetLocalTimeByDay(1);
+			SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
+			SetLocalTime(&systemtime);
+			if (i != day - 1)
+			{
+				::PrintfTime();
+			}
+			Sleep(interval_ms);
+		}
+		return;
+	}
+	else
+	{
+		tm t = ::GetLocalTimeByDay(day);
+		SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
+		SetLocalTime(&systemtime);
+	}
+}
+
+void SetTime(int hour, int minute, int second)
+{
+	tm t = ::GetLocalTimeByTime(hour, minute, second);
 	SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
 	SetLocalTime(&systemtime);
 }
@@ -66,50 +113,154 @@ void PrintfTime()
 {
 	SYSTEMTIME t;
 	GetLocalTime(&t);
-	printf("%.4d-%.2d-%.2d %.2d:%.2d:%.2d\n", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+	printf("%.4d-%.2d-%.2d 周%d %.2d:%.2d:%.2d\n", t.wYear, t.wMonth, t.wDay, t.wDayOfWeek, t.wHour, t.wMinute, t.wSecond);
 }
+
+std::unordered_map<std::string, std::string> ReadConfig()
+{
+	std::unordered_map<std::string, std::string> map;
+	std::ifstream ifs("config.ini");
+	if (!ifs.is_open())
+	{
+		return map;
+	}
+	std::string line_str;
+	while (std::getline(ifs, line_str))
+	{
+		size_t pos = line_str.find("=");
+		if (std::string::npos == pos)
+		{
+			continue;
+		}
+		map[line_str.substr(0, pos)] = line_str.substr(pos + 1);
+	}
+	return map;
+}
+
+time_t ReadXmlTime(const std::string& path, const std::string& key)
+{
+	std::ifstream ifs(path);
+	if (!ifs.is_open())
+	{
+		return 0;
+	}
+	time_t timestamp = 0;
+	std::string line_str;
+	while (std::getline(ifs, line_str))
+	{
+		size_t pos = line_str.find(key);
+		if (std::string::npos == pos)
+		{
+			continue;
+		}
+		tm t;
+		pos = pos + key.size() + 1;
+		if (pos + 4 >= line_str.size())
+		{
+			break;
+		}
+		t.tm_year = std::stoi(line_str.substr(pos, 4)) - 1900;
+
+		pos += 5;
+		if (pos + 2 >= line_str.size())
+		{
+			break;
+		}
+		t.tm_mon = std::stoi(line_str.substr(pos, 2)) - 1;
+
+		pos += 3;
+		if (pos + 2 >= line_str.size())
+		{
+			break;
+		}
+		t.tm_mday = std::stoi(line_str.substr(pos, 2));
+
+		pos += 3;
+		if (pos + 2 >= line_str.size())
+		{
+			break;
+		}
+		t.tm_hour = std::stoi(line_str.substr(pos, 2));
+
+		pos += 3;
+		if (pos + 2 >= line_str.size())
+		{
+			break;
+		}
+		t.tm_min = std::stoi(line_str.substr(pos, 2));
+
+		pos += 3;
+		if (pos + 2 >= line_str.size())
+		{
+			break;
+		}
+		t.tm_sec = std::stoi(line_str.substr(pos, 2));
+
+		timestamp = mktime(&t);
+		break;
+	}
+	ifs.close();
+	return timestamp;
+}
+
 
 int main()
 {
 	std::string add_time_str;
-	int add_day = 0;
-	int add_hour = 0;
-	int add_minute = 0;
-	int add_second = 0;
-	time_t now_second = time(nullptr);
+	time_t now_second = 0;
+	now_second = ReadXmlTime(config["file"], config["key"]);
+	if (0 == now_second)
+	{
+		time(&now_second);
+	}
 	HANDLE thread1 = (HANDLE)_beginthreadex(nullptr, 0, Thread1, &now_second, 0, nullptr);
 	while (std::getline(std::cin, add_time_str))
 	{
 		std::vector<int> add_time_vec;
 		::Split(add_time_str, add_time_vec, " ");
-		if (add_time_vec.empty())
+		size_t size = add_time_vec.size();
+		if (0 == size)
 		{
 			::PrintfTime();
 			continue;
 		}
-		if (add_time_vec.size() > 0)
+
+		int add_day = 0;
+		int hour = 0;
+		int minute = 0;
+		int second = 0;
+		if (1 == size)
 		{
 			add_day = add_time_vec[0];
-			if (add_day == 111)
+			if (add_day == 0)
 			{
 				::SetLocalTimeByTimeT(now_second);
 				::PrintfTime();
 				continue;
 			}
+			::AddDay(add_day);
 		}
-		if (add_time_vec.size() > 1)
+		else
 		{
-			add_hour = add_time_vec[1];
+			if (size > 0)
+			{
+				hour = add_time_vec[0];
+			}
+			if (size > 1)
+			{
+				minute = add_time_vec[1];
+			}
+			if (size > 2)
+			{
+				second = add_time_vec[2];
+			}
+			else if (size == 2)
+			{
+				tm _tm = ::GetLocalTimeByTime(0, 0, 0);
+				second = _tm.tm_sec;
+			}
+			::SetTime(hour, minute, second);
 		}
-		if (add_time_vec.size() > 2)
-		{
-			add_minute = add_time_vec[2];
-		}
-		if (add_time_vec.size() > 3)
-		{
-			add_second = add_time_vec[3];
-		}
-		::AddDay(add_day, add_hour, add_minute, add_second);
 		::PrintfTime();
 	}
 	CloseHandle(thread1);
