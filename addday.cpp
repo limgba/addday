@@ -101,12 +101,7 @@ unsigned CALLBACK Thread1(void* argv)
 	}
 	while (true)
 	{
-		time_t now_second = time(nullptr);
 		time_t* old_second_ptr = (time_t*)argv;
-		if (now_second == *old_second_ptr)
-		{
-			continue;
-		}
 		++*old_second_ptr;
 		Sleep(1000);
 	}
@@ -117,7 +112,7 @@ void PrintfTime()
 {
 	SYSTEMTIME t;
 	GetLocalTime(&t);
-	printf("%.4d-%.2d-%.2d 周%d %.2d:%.2d:%.2d\n", t.wYear, t.wMonth, t.wDay, t.wDayOfWeek, t.wHour, t.wMinute, t.wSecond);
+	printf("周%d %.4d-%.2d-%.2d %.2d:%.2d:%.2d\n", t.wDayOfWeek, t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
 }
 
 std::unordered_map<std::string, std::string> ReadConfig()
