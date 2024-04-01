@@ -65,16 +65,34 @@ void AddDay(int day)
 	int interval_ms = stoi(config["interval_ms"]);
 	if (interval_ms > 0)
 	{
-		for (int i = 0; i < day; ++i)
+		if (day > 0)
 		{
-			tm t = ::GetLocalTimeByDay(1);
-			SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
-			SetLocalTime(&systemtime);
-			if (i != day - 1)
+			for (int i = 0; i < day; ++i)
 			{
-				::PrintfTime();
+				tm t = ::GetLocalTimeByDay(1);
+				SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
+				SetLocalTime(&systemtime);
+				if (i != day - 1)
+				{
+					::PrintfTime();
+				}
+				Sleep(interval_ms);
 			}
-			Sleep(interval_ms);
+		}
+		else if (day < 0)
+		{
+			int max_day = -day;
+			for (int i = 0; i < max_day; ++i)
+			{
+				tm t = ::GetLocalTimeByDay(-1);
+				SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
+				SetLocalTime(&systemtime);
+				if (i != max_day - 1)
+				{
+					::PrintfTime();
+				}
+				Sleep(interval_ms);
+			}
 		}
 		return;
 	}
@@ -209,6 +227,7 @@ int main()
 	std::string add_time_str;
 	time_t now_second = 0;
 	now_second = ReadXmlTime(config["file"], config["key"]);
+	std::string delimiters = config["delimiters"];
 	if (0 == now_second)
 	{
 		time(&now_second);
@@ -218,7 +237,7 @@ int main()
 	while (std::getline(std::cin, add_time_str))
 	{
 		std::vector<int> add_time_vec;
-		::Split(add_time_str, add_time_vec, " ");
+		::Split(add_time_str, add_time_vec, delimiters);
 		size_t size = add_time_vec.size();
 		if (0 == size)
 		{
