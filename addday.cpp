@@ -104,6 +104,16 @@ void AddDay(int day)
 	}
 }
 
+void AddTime(int hour, int minute, int second)
+{
+	tm t = ::GetLocalTimeByTime(0, 0, 0);
+	t.tm_hour += hour;
+	t.tm_min += minute;
+	t.tm_sec += second;
+	SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
+	SetLocalTime(&systemtime);
+}
+
 void SetTime(int hour, int minute, int second)
 {
 	tm t = ::GetLocalTimeByTime(hour, minute, second);
@@ -228,6 +238,7 @@ int main()
 	time_t now_second = 0;
 	now_second = ReadXmlTime(config["file"], config["key"]);
 	std::string delimiters = config["delimiters"];
+	std::string add_str = config["add"];
 	if (0 == now_second)
 	{
 		time(&now_second);
@@ -236,6 +247,13 @@ int main()
 	::PrintfTime();
 	while (std::getline(std::cin, add_time_str))
 	{
+		bool is_add_time = false;
+		if (!add_time_str.empty() && add_time_str.substr(0, 1) == add_str)
+		{
+			add_time_str = add_time_str.substr(1);
+			is_add_time = true;
+		}
+
 		std::vector<int> add_time_vec;
 		::Split(add_time_str, add_time_vec, delimiters);
 		size_t size = add_time_vec.size();
@@ -249,7 +267,7 @@ int main()
 		int hour = 0;
 		int minute = 0;
 		int second = 0;
-		if (1 == size)
+		if (1 == size && !is_add_time)
 		{
 			add_day = add_time_vec[0];
 			if (add_day == 0)
@@ -274,12 +292,19 @@ int main()
 			{
 				second = add_time_vec[2];
 			}
-			else if (size == 2)
+			else if (size == 2 && !is_add_time)
 			{
 				tm _tm = ::GetLocalTimeByTime(0, 0, 0);
 				second = _tm.tm_sec;
 			}
-			::SetTime(hour, minute, second);
+			if (is_add_time)
+			{
+				::AddTime(hour, minute, second);
+			}
+			else
+			{
+				::SetTime(hour, minute, second);
+			}
 		}
 		::PrintfTime();
 	}
