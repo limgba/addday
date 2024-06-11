@@ -106,12 +106,10 @@ void AddDay(int day)
 
 void AddTime(int hour, int minute, int second)
 {
-	tm t = ::GetLocalTimeByTime(0, 0, 0);
-	t.tm_hour += hour;
-	t.tm_min += minute;
-	t.tm_sec += second;
-	SYSTEMTIME systemtime = ::GetSystemTimeByTM(&t);
-	SetLocalTime(&systemtime);
+	time_t now_second = 0;
+	time(&now_second);
+	now_second += hour * 3600 + minute * 60 + second;
+	::SetLocalTimeByTimeT(now_second);
 }
 
 void SetTime(int hour, int minute, int second)
@@ -235,14 +233,13 @@ int main()
 {
 	HANDLE thread1 = nullptr;
 	std::string add_time_str;
-	time_t now_second = 0;
-	now_second = ReadXmlTime(config["file"], config["key"]);
+	time_t cfg_now_second = ReadXmlTime(config["file"], config["key"]);
 	std::string delimiters = config["delimiters"];
 	std::string add_str = config["add"];
-	if (0 == now_second)
+	if (0 == cfg_now_second)
 	{
-		time(&now_second);
-		thread1 = (HANDLE)_beginthreadex(nullptr, 0, Thread1, &now_second, 0, nullptr);
+		time(&cfg_now_second);
+		thread1 = (HANDLE)_beginthreadex(nullptr, 0, Thread1, &cfg_now_second, 0, nullptr);
 	}
 	::PrintfTime();
 	while (std::getline(std::cin, add_time_str))
@@ -272,7 +269,7 @@ int main()
 			add_day = add_time_vec[0];
 			if (add_day == 0)
 			{
-				::SetLocalTimeByTimeT(now_second);
+				::SetLocalTimeByTimeT(cfg_now_second);
 				::PrintfTime();
 				continue;
 			}
